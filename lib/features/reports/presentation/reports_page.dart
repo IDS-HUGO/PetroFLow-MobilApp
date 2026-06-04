@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../app.dart';
 import '../../../core/models/fluid_report.dart';
-import '../../../core/models/well.dart';
 import '../../../core/providers/session_controller.dart';
 import '../../wells/data/wells_repository.dart';
 import '../data/reports_repository.dart';
@@ -15,47 +14,17 @@ class ReportsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<ReportsViewModel>(
-      create: (context) => ReportsViewModel(context.read<ReportsRepository>()),
+      create: (context) => ReportsViewModel(
+        reportsRepository: context.read<ReportsRepository>(),
+        wellsRepository: context.read<WellsRepository>(),
+      )..init(),
       child: const _ReportsView(),
     );
   }
 }
 
-class _ReportsView extends StatefulWidget {
+class _ReportsView extends StatelessWidget {
   const _ReportsView();
-
-  @override
-  State<_ReportsView> createState() => _ReportsViewState();
-}
-
-class _ReportsViewState extends State<_ReportsView> {
-  String? _selectedWellId;
-  List<Well> _wells = <Well>[];
-  bool _loadedWells = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_loadedWells) {
-      return;
-    }
-
-    _loadedWells = true;
-    context.read<WellsRepository>().fetchActiveWells().then((wells) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _wells = wells;
-        _selectedWellId = wells.isNotEmpty ? wells.first.id : null;
-      });
-
-      if (_selectedWellId != null) {
-        context.read<ReportsViewModel>().loadReportsForWell(_selectedWellId!);
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,16 +33,12 @@ class _ReportsViewState extends State<_ReportsView> {
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: () async {
-          if (_selectedWellId != null) {
-            await context.read<ReportsViewModel>().loadReportsForWell(_selectedWellId!);
-          }
-        },
+        onRefresh: vm.refreshReports,
         child: CustomScrollView(
           slivers: [
-            SliverAppBar(
+            const SliverAppBar(
               pinned: true,
-              title: const Text('Reportes de fluidos'),
+              title: Text('Reportes de fluidos'),
             ),
             SliverPadding(
               padding: const EdgeInsets.all(16),
@@ -81,36 +46,43 @@ class _ReportsViewState extends State<_ReportsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedWellId,
-                      items: _wells
-                          .map(
-                            (well) => DropdownMenuItem<String>(
-                              value: well.id,
-                              child: Text(well.name),
-                            ),
-                          )
-                          .toList(growable: false),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _selectedWellId = value);
-                          context.read<ReportsViewModel>().loadReportsForWell(value);
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'Selecciona un pozo',
-                        prefixIcon: Icon(Icons.water_outlined),
+                    if (vm.isLoadingWells)
+                      const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else
+                      DropdownButtonFormField<String>(
+                        value: vm.selectedWellId,
+                        items: vm.wells
+                            .map((well) => DropdownMenuItem<String>(
+                                  value: well.id,
+                                  child: Text(well.name),
+                                ))
+                            .toList(growable: false),
+                        onChanged: (value) {
+                          if (value != null) {
+                            context.read<ReportsViewModel>().selectWell(value);
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Selecciona un pozo',
+                          prefixIcon: Icon(Icons.water_outlined),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 16),
-                    if (vm.isLoading)
+                    if (vm.isLoadingReports)
                       const Padding(
                         padding: EdgeInsets.all(32),
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (vm.errorMessage != null)
-                      _StateMessage(icon: Icons.error_outline, title: 'Error', subtitle: vm.errorMessage!)
-                    else if (_selectedWellId == null)
+                      _StateMessage(
+                        icon: Icons.error_outline,
+                        title: 'Error',
+                        subtitle: vm.errorMessage!,
+                      )
+                    else if (vm.selectedWellId == null)
                       const _StateMessage(
                         icon: Icons.water_outlined,
                         title: 'Sin pozos',
@@ -127,40 +99,46 @@ class _ReportsViewState extends State<_ReportsView> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: vm.reports.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final report = vm.reports[index];
                           return _ReportCard(
                             report: report,
                             canManage: canManage,
-                            onTap: () => Navigator.of(context).pushNamed(AppRoutes.reportDetail, arguments: report.id),
+                            onTap: () => Navigator.of(context)
+                                .pushNamed(AppRoutes.reportDetail, arguments: report.id),
                             onEdit: canManage
                                 ? () => Navigator.of(context).pushNamed(
                                       AppRoutes.reportForm,
-                                      arguments: ReportFormArguments(pozoId: report.pozoId, reportId: report.id),
+                                      arguments: ReportFormArguments(
+                                        pozoId: report.pozoId,
+                                        reportId: report.id,
+                                      ),
                                     )
                                 : null,
-                            onDelete: canManage && _selectedWellId != null
+                            onDelete: canManage
                                 ? () async {
                                     final confirm = await showDialog<bool>(
                                       context: context,
-                                      builder: (context) => AlertDialog(
+                                      builder: (ctx) => AlertDialog(
                                         title: const Text('¿Eliminar reporte?'),
                                         content: const Text('Esta acción no se puede deshacer.'),
                                         actions: [
                                           TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
+                                            onPressed: () => Navigator.pop(ctx, false),
                                             child: const Text('Cancelar'),
                                           ),
                                           TextButton(
-                                            onPressed: () => Navigator.pop(context, true),
+                                            onPressed: () => Navigator.pop(ctx, true),
                                             child: const Text('Eliminar'),
                                           ),
                                         ],
                                       ),
                                     );
-                                    if (confirm == true && mounted) {
-                                      await context.read<ReportsViewModel>().deleteReport(report.id, _selectedWellId!);
+                                    if (confirm == true && context.mounted) {
+                                      await context
+                                          .read<ReportsViewModel>()
+                                          .deleteReport(report.id);
                                     }
                                   }
                                 : null,
@@ -174,11 +152,11 @@ class _ReportsViewState extends State<_ReportsView> {
           ],
         ),
       ),
-      floatingActionButton: canManage && _selectedWellId != null
+      floatingActionButton: canManage && vm.selectedWellId != null
           ? FloatingActionButton.extended(
               onPressed: () => Navigator.of(context).pushNamed(
                 AppRoutes.reportForm,
-                arguments: ReportFormArguments(pozoId: _selectedWellId!),
+                arguments: ReportFormArguments(pozoId: vm.selectedWellId!),
               ),
               icon: const Icon(Icons.add),
               label: const Text('Nuevo reporte'),
@@ -187,6 +165,8 @@ class _ReportsViewState extends State<_ReportsView> {
     );
   }
 }
+
+// ── Widgets auxiliares (sin cambios) ──────────────────────────────────────────
 
 class _ReportCard extends StatelessWidget {
   const _ReportCard({
@@ -221,7 +201,8 @@ class _ReportCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
-                  Text(report.formattedDate, style: Theme.of(context).textTheme.labelLarge),
+                  Text(report.formattedDate,
+                      style: Theme.of(context).textTheme.labelLarge),
                 ],
               ),
               const SizedBox(height: 8),
@@ -229,10 +210,10 @@ class _ReportCard extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _MetricChip(label: 'Mud', value: report.mudDensity.toStringAsFixed(2)),
-                  _MetricChip(label: 'Visc', value: '${report.viscosity} s'),
+                  _MetricChip(label: 'Mud',    value: report.mudDensity.toStringAsFixed(2)),
+                  _MetricChip(label: 'Visc',   value: '${report.viscosity} s'),
                   _MetricChip(label: 'Presión', value: '${report.pressure.toStringAsFixed(1)} psi'),
-                  _MetricChip(label: 'pH', value: report.ph.toStringAsFixed(1)),
+                  _MetricChip(label: 'pH',     value: report.ph.toStringAsFixed(1)),
                 ],
               ),
               if (report.notes.isNotEmpty) ...[
@@ -279,7 +260,8 @@ class _MetricChip extends StatelessWidget {
 }
 
 class _StateMessage extends StatelessWidget {
-  const _StateMessage({required this.icon, required this.title, required this.subtitle});
+  const _StateMessage(
+      {required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
