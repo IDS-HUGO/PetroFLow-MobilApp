@@ -26,6 +26,7 @@ class Well {
     required this.depthTargetFt,
     required this.createdAt,
     this.region,
+    this.campoName,
   });
 
   final String id;
@@ -34,19 +35,33 @@ class Well {
   final WellStatus status;
   final double depthTargetFt;
   final String? region;
+  final String? campoName;
   final DateTime? createdAt;
 
   bool get isActive => status != WellStatus.cerrado;
 
   factory Well.fromJson(Map<String, dynamic> json) {
+    final campoJson = json['campo'] as Map<String, dynamic>?;
+
     return Well(
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       campoId: (json['campo_id'] ?? json['campoId'] ?? '').toString(),
       status: WellStatus.fromApiValue((json['status'] ?? '').toString()),
-      depthTargetFt: double.tryParse((json['depth_target_ft'] ?? json['depthTargetFt'] ?? 0).toString()) ?? 0,
-      region: json['location']?.toString() ?? json['region']?.toString(),
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+      depthTargetFt:
+          double.tryParse(
+            (json['depth_target_ft'] ?? json['depthTargetFt'] ?? 0).toString(),
+          ) ??
+          0,
+      region:
+          json['location']?.toString() ??
+          json['region']?.toString() ??
+          campoJson?['region']?.toString(),
+      campoName:
+          campoJson?['name']?.toString() ?? json['campo_name']?.toString(),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 }

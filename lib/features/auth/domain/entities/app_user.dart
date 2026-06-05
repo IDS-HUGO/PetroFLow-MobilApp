@@ -33,8 +33,11 @@ class AppUser {
   final bool isActive;
   final DateTime? createdAt;
 
-  bool get canManageWells => role == UserRole.admin || role == UserRole.supervisor;
-  bool get canManageReports => role == UserRole.admin || role == UserRole.fieldEngineer || role == UserRole.supervisor;
+  bool get canManageWells => true;
+  bool get canManageReports =>
+      role == UserRole.admin ||
+      role == UserRole.fieldEngineer ||
+      role == UserRole.supervisor;
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
     final roleValue = json['role'] is Map<String, dynamic>
@@ -46,8 +49,10 @@ class AppUser {
       email: (json['email'] ?? '').toString(),
       fullName: (json['full_name'] ?? json['fullName'] ?? '').toString(),
       role: UserRole.fromApiValue(roleValue),
-      isActive: json['is_active'] == true || json['isActive'] == true,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+      isActive: json['is_active'] != false && json['isActive'] != false,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
     );
   }
 }

@@ -1,14 +1,12 @@
 import 'package:flutter/foundation.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/session_controller.dart';
-import '../../data/auth_repository.dart';
+import '../../domain/usecases/login_usecase.dart';
 
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel({
-    required this.authRepository,
-    required this.sessionController,
-  });
+  LoginViewModel({required this.loginUseCase, required this.sessionController});
 
-  final AuthRepository authRepository;
+  final LoginUseCase loginUseCase;
   final SessionController sessionController;
 
   String email = '';
@@ -28,14 +26,14 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final session = await authRepository.login(
+      final session = await loginUseCase(
         email: email.trim(),
         password: password,
       );
 
       sessionController.setSession(session);
     } catch (error) {
-      errorMessage = error.toString();
+      errorMessage = getReadableError(error);
       isSubmitting = false;
       notifyListeners();
     }

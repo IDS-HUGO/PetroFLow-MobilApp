@@ -1,20 +1,30 @@
+// ignore_for_file: prefer_initializing_formals
+
 import 'package:flutter/foundation.dart';
 
-import '../../../core/models/fluid_report.dart';
-import '../../../core/models/well.dart';
+import '../../wells/domain/entities/well.dart';
+import '../domain/entities/fluid_report.dart';
 import '../../../core/network/api_exception.dart';
-import '../data/reports_repository.dart';
-import '../../wells/data/wells_repository.dart';
+import '../../../core/providers/session_controller.dart';
+import '../domain/usecases/create_report_usecase.dart';
+import '../domain/usecases/delete_report_usecase.dart';
+import '../domain/usecases/get_report_by_id_usecase.dart';
+import '../domain/usecases/get_reports_by_well_usecase.dart';
+import '../domain/usecases/update_report_usecase.dart';
+import '../../wells/domain/usecases/get_wells_usecase.dart';
 
 class ReportsViewModel extends ChangeNotifier {
   ReportsViewModel({
-    required ReportsRepository reportsRepository,
-    required WellsRepository wellsRepository,
-  })  : _reportsRepository = reportsRepository,
-        _wellsRepository = wellsRepository;
+    required GetReportsByWellUseCase getReportsByWellUseCase,
+    required DeleteReportUseCase deleteReportUseCase,
+    required GetWellsUseCase getWellsUseCase,
+  }) : _getReportsByWellUseCase = getReportsByWellUseCase,
+       _deleteReportUseCase = deleteReportUseCase,
+       _getWellsUseCase = getWellsUseCase;
 
-  final ReportsRepository _reportsRepository;
-  final WellsRepository _wellsRepository;
+  final GetReportsByWellUseCase _getReportsByWellUseCase;
+  final DeleteReportUseCase _deleteReportUseCase;
+  final GetWellsUseCase _getWellsUseCase;
 
   // ── Estado de pozos ──
   List<Well> wells = <Well>[];
@@ -24,6 +34,7 @@ class ReportsViewModel extends ChangeNotifier {
   // ── Estado de reportes ──
   List<FluidReport> reports = <FluidReport>[];
   bool isLoadingReports = false;
+  bool isDeleting = false;
   String? errorMessage;
 
   Future<void> init() async {
@@ -32,13 +43,13 @@ class ReportsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      wells = await _wellsRepository.fetchActiveWells();
+      wells = await _getWellsUseCase();
       if (wells.isNotEmpty) {
         selectedWellId = wells.first.id;
         await _loadReports(selectedWellId!);
       }
     } catch (error) {
-      errorMessage = error.toString();
+      errorMessage = _readableError(error);
     } finally {
       isLoadingWells = false;
       notifyListeners();
@@ -52,15 +63,30 @@ class ReportsViewModel extends ChangeNotifier {
   }
 
   Future<void> refreshReports() async {
-    if (selectedWellId != null) {
-      await _loadReports(selectedWellId!);
+    if (selectedWellId == null) {
+      await init();
+      return;
     }
+
+    await _loadReports(selectedWellId!);
   }
 
   Future<void> deleteReport(int id) async {
-    await _reportsRepository.deleteReport(id);
-    if (selectedWellId != null) {
-      await _loadReports(selectedWellId!);
+    isDeleting = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _deleteReportUseCase(id);
+      if (selectedWellId != null) {
+        await _loadReports(selectedWellId!);
+      }
+    } catch (error) {
+      errorMessage = _readableError(error);
+      rethrow;
+    } finally {
+      isDeleting = false;
+      notifyListeners();
     }
   }
 
@@ -70,11 +96,11 @@ class ReportsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      reports = await _reportsRepository.fetchByWell(pozoId);
+      reports = await _getReportsByWellUseCase(pozoId);
     } on ApiException catch (e) {
       errorMessage = e.message;
     } catch (error) {
-      errorMessage = error.toString();
+      errorMessage = _readableError(error);
     } finally {
       isLoadingReports = false;
       notifyListeners();
@@ -83,12 +109,48 @@ class ReportsViewModel extends ChangeNotifier {
 }
 
 class ReportFormViewModel extends ChangeNotifier {
-  ReportFormViewModel(this._repository);
+  ReportFormViewModel({
+    required GetReportByIdUseCase getReportByIdUseCase,
+    required CreateReportUseCase createReportUseCase,
+    required UpdateReportUseCase updateReportUseCase,
+    required this.sessionController,
+  }) : _getReportByIdUseCase = getReportByIdUseCase,
+       _createReportUseCase = createReportUseCase,
+       _updateReportUseCase = updateReportUseCase;
 
-  final ReportsRepository _repository;
+  final GetReportByIdUseCase _getReportByIdUseCase;
+  final CreateReportUseCase _createReportUseCase;
+  final UpdateReportUseCase _updateReportUseCase;
+  final SessionController sessionController;
 
+  FluidReport? existingReport;
+  bool isLoadingInitial = false;
   bool isSubmitting = false;
   String? errorMessage;
+
+  void setValidationError(String message) {
+    errorMessage = message;
+    notifyListeners();
+  }
+
+  Future<void> loadInitialReport(int? reportId) async {
+    if (reportId == null) {
+      return;
+    }
+
+    isLoadingInitial = true;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      existingReport = await _getReportByIdUseCase(reportId);
+    } catch (error) {
+      errorMessage = _readableError(error);
+    } finally {
+      isLoadingInitial = false;
+      notifyListeners();
+    }
+  }
 
   Future<FluidReport> saveReport({
     int? reportId,
@@ -104,10 +166,19 @@ class ReportFormViewModel extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
+    final engineerId =
+        existingReport?.ingenieroId ?? sessionController.user?.id;
+    if (engineerId == null || engineerId.isEmpty) {
+      errorMessage = 'No hay una sesión válida para guardar el reporte.';
+      isSubmitting = false;
+      notifyListeners();
+      throw StateError(errorMessage!);
+    }
+
     final report = FluidReport(
       id: reportId ?? 0,
       pozoId: pozoId,
-      ingenieroId: '',
+      ingenieroId: engineerId,
       date: date,
       mudDensity: mudDensity,
       viscosity: viscosity,
@@ -119,17 +190,21 @@ class ReportFormViewModel extends ChangeNotifier {
 
     try {
       final saved = reportId == null
-          ? await _repository.createReport(report)
-          : await _repository.updateReport(id: reportId, report: report);
+          ? await _createReportUseCase(report)
+          : await _updateReportUseCase(id: reportId, report: report);
 
       isSubmitting = false;
       notifyListeners();
       return saved;
     } catch (error) {
-      errorMessage = error.toString();
+      errorMessage = _readableError(error);
       isSubmitting = false;
       notifyListeners();
       rethrow;
     }
   }
+}
+
+String _readableError(Object error) {
+  return getReadableError(error);
 }

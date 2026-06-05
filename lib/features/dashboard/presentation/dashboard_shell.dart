@@ -41,9 +41,21 @@ class _DashboardShellState extends State<DashboardShell> {
         selectedIndex: _index,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.space_dashboard_outlined), selectedIcon: Icon(Icons.space_dashboard), label: 'Inicio'),
-          NavigationDestination(icon: Icon(Icons.water_outlined), selectedIcon: Icon(Icons.water), label: 'Pozos'),
-          NavigationDestination(icon: Icon(Icons.description_outlined), selectedIcon: Icon(Icons.description), label: 'Reportes'),
+          NavigationDestination(
+            icon: Icon(Icons.space_dashboard_outlined),
+            selectedIcon: Icon(Icons.space_dashboard),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.water_outlined),
+            selectedIcon: Icon(Icons.water),
+            label: 'Pozos',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.description_outlined),
+            selectedIcon: Icon(Icons.description),
+            label: 'Reportes',
+          ),
         ],
       ),
     );
@@ -69,7 +81,11 @@ class _OverviewPage extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xff14351f), Color(0xff2f6b3a), Color(0xffb7d6af)],
+                      colors: [
+                        Color(0xff14351f),
+                        Color(0xff2f6b3a),
+                        Color(0xffb7d6af),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -80,41 +96,58 @@ class _OverviewPage extends StatelessWidget {
                     children: [
                       Text(
                         'Operación en campo',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: Colors.white),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         session == null
                             ? 'Sesión no disponible.'
                             : 'Hola, ${session.fullName}. Aquí centralizas pozos, reportes y control operativo.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.5,
-                  children: const [
-                    _SummaryCard(icon: Icons.water_drop_outlined, label: 'Control de lodo', value: '24/7'),
-                    _SummaryCard(icon: Icons.analytics_outlined, label: 'Seguimiento', value: 'Tiempo real'),
-                    _SummaryCard(icon: Icons.engineering_outlined, label: 'Ingeniería', value: 'Campo'),
-                    _SummaryCard(icon: Icons.verified_outlined, label: 'Seguridad', value: 'JWT'),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Card(
-                  child: ListTile(
-                    leading: Icon(Icons.fact_check_outlined),
-                    title: Text('Flujo recomendado'),
-                    subtitle: Text('1. Revisa pozos activos  2. Registra reporte  3. Corrige anomalías'),
-                    trailing: Icon(Icons.chevron_right),
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 640;
+
+                    return GridView.count(
+                      crossAxisCount: isWide ? 4 : 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: isWide ? 1.25 : 1.05,
+                      children: const [
+                        _SummaryCard(
+                          icon: Icons.water_drop_outlined,
+                          label: 'Control',
+                          value: 'Lodo',
+                        ),
+                        _SummaryCard(
+                          icon: Icons.analytics_outlined,
+                          label: 'Datos',
+                          value: 'Diarios',
+                        ),
+                        _SummaryCard(
+                          icon: Icons.engineering_outlined,
+                          label: 'Equipo',
+                          value: 'Campo',
+                        ),
+                        _SummaryCard(
+                          icon: Icons.verified_outlined,
+                          label: 'Estado',
+                          value: 'Activo',
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -126,7 +159,11 @@ class _OverviewPage extends StatelessWidget {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.icon, required this.label, required this.value});
+  const _SummaryCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   final IconData icon;
   final String label;
@@ -142,9 +179,21 @@ class _SummaryCard extends StatelessWidget {
           children: [
             Icon(icon, size: 28),
             const SizedBox(height: 8),
-            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
             const SizedBox(height: 4),
-            Text(value, style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ],
         ),
       ),

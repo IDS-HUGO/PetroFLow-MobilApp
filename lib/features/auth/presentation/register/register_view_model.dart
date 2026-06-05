@@ -1,16 +1,17 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/models/app_user.dart';
+import '../../domain/entities/app_user.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/providers/session_controller.dart';
-import '../../data/auth_repository.dart';
+import '../../domain/usecases/register_usecase.dart';
 
 class RegisterViewModel extends ChangeNotifier {
   RegisterViewModel({
-    required this.authRepository,
+    required this.registerUseCase,
     required this.sessionController,
   });
 
-  final AuthRepository authRepository;
+  final RegisterUseCase registerUseCase;
   final SessionController sessionController;
 
   String fullName = '';
@@ -21,7 +22,9 @@ class RegisterViewModel extends ChangeNotifier {
   String? errorMessage;
 
   Future<void> register() async {
-    if (fullName.trim().isEmpty || email.trim().isEmpty || password.trim().isEmpty) {
+    if (fullName.trim().isEmpty ||
+        email.trim().isEmpty ||
+        password.trim().isEmpty) {
       errorMessage = 'Completa nombre, correo y contraseña.';
       notifyListeners();
       return;
@@ -32,7 +35,7 @@ class RegisterViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final session = await authRepository.register(
+      final session = await registerUseCase(
         fullName: fullName.trim(),
         email: email.trim(),
         password: password,
@@ -41,7 +44,7 @@ class RegisterViewModel extends ChangeNotifier {
 
       sessionController.setSession(session);
     } catch (error) {
-      errorMessage = error.toString();
+      errorMessage = getReadableError(error);
       isSubmitting = false;
       notifyListeners();
     }

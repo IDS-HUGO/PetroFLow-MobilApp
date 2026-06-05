@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:petroflow/app.dart';
+import 'package:petroflow/app/app.dart';
 
 void main() {
   testWidgets('PetroFlow muestra la pantalla de acceso', (tester) async {

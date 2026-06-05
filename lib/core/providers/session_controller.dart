@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/app_user.dart';
-import '../models/auth_session.dart';
+import '../../features/auth/domain/entities/app_user.dart';
+import '../../features/auth/domain/entities/auth_session.dart';
 
 class SessionController extends ChangeNotifier {
   AuthSession? _session;

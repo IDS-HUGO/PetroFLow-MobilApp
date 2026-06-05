@@ -36,22 +36,33 @@ class FluidReport {
     return FluidReport(
       id: int.tryParse(json['id'].toString()) ?? 0,
       pozoId: (json['pozo_id'] ?? json['pozoId'] ?? '').toString(),
-      ingenieroId: (json['ingeniero_id'] ?? json['ingenieroId'] ?? '').toString(),
-      date: DateTime.tryParse((json['date'] ?? '').toString()) ?? DateTime.now(),
-      mudDensity: double.tryParse((json['mud_density'] ?? json['mudDensity'] ?? 0).toString()) ?? 0,
+      ingenieroId: (json['ingeniero_id'] ?? json['ingenieroId'] ?? '')
+          .toString(),
+      date:
+          DateTime.tryParse((json['date'] ?? '').toString()) ?? DateTime.now(),
+      mudDensity:
+          double.tryParse(
+            (json['mud_density'] ?? json['mudDensity'] ?? 0).toString(),
+          ) ??
+          0,
       viscosity: int.tryParse((json['viscosity'] ?? 0).toString()) ?? 0,
       pressure: double.tryParse((json['pressure'] ?? 0).toString()) ?? 0,
       ph: double.tryParse((json['ph'] ?? 0).toString()) ?? 0,
       notes: (json['notes'] ?? '').toString(),
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString())
+          : null,
       wellName: pozoJson?['name']?.toString() ?? json['well_name']?.toString(),
-      engineerName: engineerJson?['full_name']?.toString() ?? json['engineer_name']?.toString(),
+      engineerName:
+          engineerJson?['full_name']?.toString() ??
+          json['engineer_name']?.toString(),
     );
   }
 
   Map<String, dynamic> toPayload() {
     return <String, dynamic>{
       'pozo_id': pozoId,
+      'ingeniero_id': ingenieroId,
       'date': formattedDate,
       'mud_density': mudDensity,
       'viscosity': viscosity,

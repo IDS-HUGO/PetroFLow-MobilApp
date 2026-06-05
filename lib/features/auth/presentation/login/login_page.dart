@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../app.dart';
+import '../../../../app/routes/app_routes.dart';
 import '../../../../core/providers/session_controller.dart';
-import '../../data/auth_repository.dart';
+import '../../domain/usecases/login_usecase.dart';
 import 'login_view_model.dart';
 
 class LoginPage extends StatelessWidget {
@@ -13,7 +13,7 @@ class LoginPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<LoginViewModel>(
       create: (context) => LoginViewModel(
-        authRepository: context.read<AuthRepository>(),
+        loginUseCase: context.read<LoginUseCase>(),
         sessionController: context.read<SessionController>(),
       ),
       child: const _LoginView(),
@@ -58,7 +58,9 @@ class _LoginView extends StatelessWidget {
                             children: [
                               Text(
                                 'Acceso al sistema',
-                                style: Theme.of(context).textTheme.headlineSmall,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
                               ),
                               const SizedBox(height: 16),
                               TextField(
@@ -82,7 +84,9 @@ class _LoginView extends StatelessWidget {
                                 const SizedBox(height: 12),
                                 Text(
                                   vm.errorMessage!,
-                                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 20),
@@ -96,14 +100,18 @@ class _LoginView extends StatelessWidget {
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : const Text('Ingresar'),
                               ),
                               const SizedBox(height: 8),
                               TextButton(
                                 onPressed: () {
-                                  Navigator.of(context).pushNamed(AppRoutes.register);
+                                  Navigator.of(
+                                    context,
+                                  ).pushNamed(AppRoutes.register);
                                 },
                                 child: const Text('Crear cuenta nueva'),
                               ),
@@ -137,17 +145,27 @@ class _HeaderCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Icon(Icons.oil_barrel_outlined, color: Colors.white, size: 48),
+            const Icon(
+              Icons.oil_barrel_outlined,
+              color: Colors.white,
+              size: 48,
+            ),
             const SizedBox(height: 12),
             Text(
               'PetroFlow',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(color: Colors.white),
             ),
             const SizedBox(height: 8),
             Text(
-              user == null ? 'Control de pozos, fluidos y operaciones' : 'Bienvenido, ${user.fullName}',
+              user == null
+                  ? 'Control de pozos, fluidos y operaciones'
+                  : 'Bienvenido, ${user.fullName}',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
             ),
           ],
         ),

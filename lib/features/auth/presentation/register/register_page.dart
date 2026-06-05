@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../core/models/app_user.dart';
+import '../../domain/entities/app_user.dart';
 import '../../../../core/providers/session_controller.dart';
-import '../../data/auth_repository.dart';
+import '../../domain/usecases/register_usecase.dart';
 import 'register_view_model.dart';
 
 class RegisterPage extends StatelessWidget {
@@ -13,7 +13,7 @@ class RegisterPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<RegisterViewModel>(
       create: (context) => RegisterViewModel(
-        authRepository: context.read<AuthRepository>(),
+        registerUseCase: context.read<RegisterUseCase>(),
         sessionController: context.read<SessionController>(),
       ),
       child: const _RegisterView(),
@@ -76,14 +76,18 @@ class _RegisterView extends StatelessWidget {
                         DropdownButtonFormField<UserRole>(
                           isExpanded: true,
                           initialValue: vm.role,
-                          items: const [UserRole.supervisor, UserRole.fieldEngineer]
-                              .map(
-                                (role) => DropdownMenuItem<UserRole>(
-                                  value: role,
-                                  child: Text(role.label),
-                                ),
-                              )
-                              .toList(growable: false),
+                          items:
+                              const [
+                                    UserRole.supervisor,
+                                    UserRole.fieldEngineer,
+                                  ]
+                                  .map(
+                                    (role) => DropdownMenuItem<UserRole>(
+                                      value: role,
+                                      child: Text(role.label),
+                                    ),
+                                  )
+                                  .toList(growable: false),
                           onChanged: (value) => vm.role = value ?? vm.role,
                           decoration: const InputDecoration(
                             labelText: 'Rol',
@@ -94,7 +98,9 @@ class _RegisterView extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             vm.errorMessage!,
-                            style: TextStyle(color: Theme.of(context).colorScheme.error),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                           ),
                         ],
                         const SizedBox(height: 20),
@@ -103,12 +109,22 @@ class _RegisterView extends StatelessWidget {
                               ? null
                               : () async {
                                   await vm.register();
+                                  if (context.mounted &&
+                                      context
+                                          .read<SessionController>()
+                                          .isAuthenticated) {
+                                    Navigator.of(
+                                      context,
+                                    ).popUntil((route) => route.isFirst);
+                                  }
                                 },
                           child: vm.isSubmitting
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Text('Registrar usuario'),
                         ),
